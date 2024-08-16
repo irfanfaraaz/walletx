@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/Theme/thrme-provider";
+import AppWalletProvider from "@/components/AppWalletProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -37,8 +38,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
         >
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <div className="relative flex h-screen flex-col">
-              <SiteHeader />
-              <div className="flex-1">{children}</div>
+              <AppWalletProvider>
+                <SiteHeader />
+                <div className="flex-1">{children}</div>
+              </AppWalletProvider>
             </div>
             {/* <Toaster /> */}
           </ThemeProvider>
