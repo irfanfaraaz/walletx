@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-// import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
@@ -43,7 +43,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <div className="flex-1">{children}</div>
               </AppWalletProvider>
             </div>
-            {/* <Toaster /> */}
+            <Toaster />
           </ThemeProvider>
         </body>
       </html>
