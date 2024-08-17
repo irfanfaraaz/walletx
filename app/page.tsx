@@ -2,7 +2,7 @@ import Wallet from "@/components/Wallet";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+    <main className="w-full flex mt-20 items-center justify-center">
       <Wallet />
     </main>
   );

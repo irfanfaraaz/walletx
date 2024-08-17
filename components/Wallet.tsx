@@ -1,20 +1,28 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
-import { Keypair } from "@solana/web3.js";
+import {
+  addFunds,
+  getSolBalanaceInUSD,
+  withdrawFunds,
+  sendFunds,
+} from "@/lib/utils";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import * as web3 from "@solana/web3.js";
 import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from "bip39";
 import bs58 from "bs58";
 import { derivePath } from "ed25519-hd-key";
 import { useEffect, useState } from "react";
 import * as nacl from "tweetnacl";
 import CreateWallet from "./CreateWallet";
+import WalletCard from "./WalletCard";
+import WalletDetails from "./WalletDetails";
 
 interface Wallet {
   publicKey: string;
   privateKey: string;
   mnemonic: string;
+  derivationPath: string;
 }
 
 const Wallet = () => {
@@ -23,24 +31,36 @@ const Wallet = () => {
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [visiblePrivateKeys, setVisiblePrivateKeys] = useState<boolean[]>([]);
   const [visiblePhrases, setVisiblePhrases] = useState<boolean[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<number>(0);
+  const [bal, setBal] = useState(0.0);
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
+  const [walletBalance, setWalletBalance] = useState(0.0);
+  const [externalWalletBalance, setExternalWalletBalance] = useState(0.0);
+  const [txSig, setTxSig] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     const savedWallets = localStorage.getItem("wallets");
     if (savedWallets) {
-      setWallets(JSON.parse(savedWallets));
-      setVisiblePrivateKeys(JSON.parse(savedWallets).map(() => false));
-      setVisiblePhrases(JSON.parse(savedWallets).map(() => false));
+      const parsedWallets = JSON.parse(savedWallets);
+      setWallets(parsedWallets);
+      setVisiblePrivateKeys(parsedWallets.map(() => false));
+      setVisiblePhrases(parsedWallets.map(() => false));
     }
   }, []);
 
   const createWallet = async () => {
     const mnemonic = generateMnemonic();
-    const newWallet = await generateWalletFromMnemonic(mnemonic);
+    const newWallet = await generateWalletFromMnemonic(mnemonic, 0);
     updateWallets(newWallet);
   };
 
   const generateWalletFromMnemonic = async (
-    mnemonic: string
+    mnemonic: string,
+    accountIndex: number
   ): Promise<Wallet | null> => {
     if (!validateMnemonic(mnemonic)) {
       toast({
@@ -56,10 +76,10 @@ const Wallet = () => {
       const seedBuffer = mnemonicToSeedSync(mnemonic);
       setSeed(seedBuffer.toString("hex"));
 
-      const path = `m/44'/501'/0'/0'`;
+      const path = `m/44'/501'/${accountIndex}'/0'`;
       const { key: derivedSeed } = derivePath(path, seedBuffer.toString("hex"));
       const secret = nacl.sign.keyPair.fromSeed(derivedSeed).secretKey;
-      const keypair = Keypair.fromSecretKey(secret);
+      const keypair = web3.Keypair.fromSecretKey(secret);
 
       const privateKey = bs58.encode(secret);
       const publicKey = keypair.publicKey.toBase58();
@@ -68,6 +88,7 @@ const Wallet = () => {
         publicKey,
         privateKey,
         mnemonic,
+        derivationPath: path,
       };
     } catch (error) {
       toast({
@@ -87,6 +108,7 @@ const Wallet = () => {
       localStorage.setItem("wallets", JSON.stringify(updatedWallets));
       setVisiblePrivateKeys([...visiblePrivateKeys, false]);
       setVisiblePhrases([...visiblePhrases, false]);
+      setSelectedAccount(updatedWallets.length - 1);
       toast({
         title: "Success",
         description: "Wallet generated successfully!",
@@ -100,7 +122,7 @@ const Wallet = () => {
 
   const handleImportWallet = async (mnemonic: string) => {
     if (mnemonic) {
-      const newWallet = await generateWalletFromMnemonic(mnemonic);
+      const newWallet = await generateWalletFromMnemonic(mnemonic, 0);
       updateWallets(newWallet);
     } else {
       toast({
@@ -112,68 +134,215 @@ const Wallet = () => {
     }
   };
 
+  const handleCreateNewAccount = async () => {
+    if (wallets.length > 0) {
+      const mnemonic = wallets[0].mnemonic;
+      const newAccountIndex = wallets.length;
+      const newWallet = await generateWalletFromMnemonic(
+        mnemonic,
+        newAccountIndex
+      );
+      updateWallets(newWallet);
+    }
+  };
+
+  const handleAccountChange = (value: string) => {
+    setSelectedAccount(parseInt(value));
+  };
+
+  useEffect(() => {
+    async function fetchBal() {
+      if (wallets.length > 0 && selectedAccount < wallets.length) {
+        const bal = await getSolBalanaceInUSD(
+          wallets[selectedAccount].publicKey
+        );
+        setBal(bal);
+      }
+    }
+
+    fetchBal();
+  }, [selectedAccount, wallets]);
+
+  useEffect(() => {
+    async function fetchWalletBalance() {
+      if (publicKey) {
+        const balance = await connection.getBalance(publicKey);
+        setExternalWalletBalance(balance / web3.LAMPORTS_PER_SOL);
+      }
+      if (
+        wallets.length > 0 &&
+        selectedAccount < wallets.length &&
+        wallets[selectedAccount].publicKey
+      ) {
+        const balance = await connection.getBalance(
+          new web3.PublicKey(wallets[selectedAccount].publicKey)
+        );
+        setWalletBalance(balance / web3.LAMPORTS_PER_SOL);
+      }
+    }
+
+    fetchWalletBalance();
+  }, [publicKey, connection, wallets, selectedAccount]);
+
+  const handleTransaction = async (
+    transactionType: "add" | "withdraw" | "send",
+    amountInSol: number,
+    toPublicKey?: string
+  ) => {
+    if (!connection || (!publicKey && transactionType !== "send")) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet first!",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (amountInSol <= 0) {
+      toast({
+        title: "Error",
+        description: "Amount must be greater than 0!",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const insufficientBalance =
+      (transactionType === "add" && amountInSol > externalWalletBalance) ||
+      (transactionType !== "add" && amountInSol > walletBalance);
+
+    if (insufficientBalance) {
+      toast({
+        title: "Error",
+        description: `Insufficient balance in ${
+          transactionType === "add" ? "your wallet" : "the account"
+        }!`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const setTransactionState = {
+      add: setIsAdding,
+      withdraw: setIsWithdrawing,
+      send: setIsSending,
+    }[transactionType];
+
+    setTransactionState(true);
+
+    try {
+      let signature;
+      switch (transactionType) {
+        case "add":
+          signature = await addFunds(
+            publicKey!,
+            new web3.PublicKey(wallets[selectedAccount].publicKey),
+            amountInSol,
+            sendTransaction
+          );
+          break;
+        case "withdraw":
+          signature = await withdrawFunds(
+            bs58.decode(wallets[selectedAccount].privateKey).toString(),
+            publicKey!,
+            amountInSol
+          );
+          break;
+        case "send":
+          signature = await sendFunds(
+            bs58.decode(wallets[selectedAccount].privateKey).toString(),
+            toPublicKey!,
+            amountInSol
+          );
+          break;
+      }
+
+      setTxSig(signature);
+
+      const newBalance = await getSolBalanaceInUSD(
+        wallets[selectedAccount].publicKey
+      );
+      setBal(newBalance);
+
+      toast({
+        title: "Success",
+        description: `${
+          transactionType === "add"
+            ? "Transaction"
+            : transactionType === "withdraw"
+            ? "Withdrawal"
+            : "Transaction"
+        } completed successfully.`,
+        action: (
+          <ToastAction
+            altText="View Transaction"
+            onClick={() =>
+              window.open(
+                `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
+                "_blank"
+              )
+            }
+          >
+            View Transaction
+          </ToastAction>
+        ),
+      });
+    } catch (error) {
+      console.error("Transaction Error:", error);
+      if (error instanceof web3.SendTransactionError) {
+        console.error("SendTransactionError:", (error as any).error);
+        toast({
+          title: "Error",
+          description: (error as any).error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: `Transaction failed! Reason: ${(error as any).message}`,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setTransactionState(false);
+    }
+  };
+
+  const handleAddOrWithdraw = (isAddingFunds: boolean, amountInSol: number) => {
+    handleTransaction(isAddingFunds ? "add" : "withdraw", amountInSol);
+  };
+
+  const handleSend = (toPublicKey: string, amountInSol: number) => {
+    handleTransaction("send", amountInSol, toPublicKey);
+  };
+
   return (
-    <div className="">
+    <div className="w-full flex items-center justify-center">
       {wallets.length === 0 ? (
         <CreateWallet
           onCreateWallet={handleCreateWallet}
           onImportWallet={handleImportWallet}
         />
       ) : (
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Wallet</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col space-y-4">
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold">Your Accounts:</h3>
-              {wallets.map((wallet, index) => (
-                <div key={index} className="mt-2">
-                  <p className="text-sm break-all">
-                    Public Key: {wallet.publicKey}
-                  </p>
-                  <p className="flex text-sm justify-between mt-2 break-all">
-                    <span>
-                      Private Key:
-                      {visiblePrivateKeys[index]
-                        ? wallet.privateKey
-                        : "  ********"}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const newVisiblePrivateKeys = [...visiblePrivateKeys];
-                        newVisiblePrivateKeys[index] =
-                          !newVisiblePrivateKeys[index];
-                        setVisiblePrivateKeys(newVisiblePrivateKeys);
-                      }}
-                    >
-                      {visiblePrivateKeys[index] ? "Hide" : "Show"}
-                    </Button>
-                  </p>
-                  <p className="flex justify-between mt-2 text-sm break-all">
-                    <span>
-                      Mnemonic:
-                      {visiblePhrases[index] ? wallet.mnemonic : "  ********"}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const newVisiblePhrases = [...visiblePhrases];
-                        newVisiblePhrases[index] = !newVisiblePhrases[index];
-                        setVisiblePhrases(newVisiblePhrases);
-                      }}
-                    >
-                      {visiblePhrases[index] ? "Hide" : "Show"}
-                    </Button>
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <WalletCard
+          wallets={wallets}
+          selectedAccount={selectedAccount}
+          bal={bal}
+          onAccountChange={handleAccountChange}
+          onSend={handleSend}
+          onAddFunds={handleAddOrWithdraw}
+          onWithdraw={handleAddOrWithdraw}
+          onCreateNewAccount={handleCreateNewAccount}
+        >
+          <WalletDetails
+            wallets={wallets}
+            selectedAccount={selectedAccount}
+            visiblePrivateKeys={visiblePrivateKeys}
+            visiblePhrases={visiblePhrases}
+            setVisiblePrivateKeys={setVisiblePrivateKeys}
+            setVisiblePhrases={setVisiblePhrases}
+          />
+        </WalletCard>
       )}
     </div>
   );

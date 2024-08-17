@@ -88,8 +88,43 @@ export async function withdrawFunds(
     ]);
     return signature;
   } catch (error) {
+    console.error("heheheh");
     console.error("Transaction Error:", error);
 
     throw new Error("Transaction failed!");
+  }
+}
+
+export async function sendFunds(
+  fromPrivateKey: string,
+  toPublicKey: string,
+  amount: number
+): Promise<string> {
+  const fromKeypair = Keypair.fromSecretKey(
+    Uint8Array.from(fromPrivateKey.split(",").map(Number))
+  );
+  const toPublicKeyObj = new PublicKey(toPublicKey);
+
+  const transaction = new Transaction();
+  const instruction = SystemProgram.transfer({
+    fromPubkey: fromKeypair.publicKey,
+    lamports: amount * LAMPORTS_PER_SOL,
+    toPubkey: toPublicKeyObj,
+  });
+
+  transaction.add(instruction);
+
+  try {
+    const signature = await sendAndConfirmTransaction(connection, transaction, [
+      fromKeypair,
+    ]);
+    return signature;
+  } catch (error) {
+    console.error("Transaction Error:", error);
+    if (error instanceof Error) {
+      throw new Error(error.message);
+    } else {
+      throw new Error("An unknown error occurred");
+    }
   }
 }

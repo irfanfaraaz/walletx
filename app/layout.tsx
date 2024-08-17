@@ -36,14 +36,14 @@ export default function RootLayout({ children }: RootLayoutProps) {
             inter.className
           )}
         >
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <div className="relative flex h-screen flex-col">
-              <AppWalletProvider>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+            <AppWalletProvider>
+              <div className="relative flex h-screen flex-col">
                 <SiteHeader />
-                <div className="flex-1">{children}</div>
-              </AppWalletProvider>
-            </div>
-            <Toaster />
+                <div className="">{children}</div>
+              </div>
+              <Toaster />
+            </AppWalletProvider>
           </ThemeProvider>
         </body>
       </html>
