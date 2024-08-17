@@ -10,18 +10,34 @@ import { Copy } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 
-const WalletDetails = ({
+interface Wallet {
+  publicKey: string;
+  privateKey: string;
+  mnemonic: string;
+  derivationPath: string;
+}
+
+interface WalletDetailsProps {
+  wallets: Wallet[];
+  selectedAccount: number;
+  visiblePrivateKeys: boolean[];
+  visiblePhrases: boolean[];
+  setVisiblePrivateKeys: React.Dispatch<React.SetStateAction<boolean[]>>;
+  setVisiblePhrases: React.Dispatch<React.SetStateAction<boolean[]>>;
+}
+
+const WalletDetails: React.FC<WalletDetailsProps> = ({
   wallets,
   selectedAccount,
   visiblePrivateKeys,
   visiblePhrases,
   setVisiblePrivateKeys,
   setVisiblePhrases,
-}: any) => {
+}) => {
   const { toast } = useToast();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const copyToClipboard = (text: string, type: string) => {
+  const copyToClipboard = (text: string, type: string): void => {
     navigator.clipboard.writeText(text);
     setCopiedKey(type);
     toast({

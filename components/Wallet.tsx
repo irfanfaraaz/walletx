@@ -38,9 +38,6 @@ const Wallet = () => {
   const [walletBalance, setWalletBalance] = useState(0.0);
   const [externalWalletBalance, setExternalWalletBalance] = useState(0.0);
   const [txSig, setTxSig] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     const savedWallets = localStorage.getItem("wallets");
@@ -150,39 +147,32 @@ const Wallet = () => {
     setSelectedAccount(parseInt(value));
   };
 
-  useEffect(() => {
-    async function fetchBal() {
-      if (wallets.length > 0 && selectedAccount < wallets.length) {
-        const bal = await getSolBalanaceInUSD(
-          wallets[selectedAccount].publicKey
-        );
-        setBal(bal);
-      }
+  const fetchBalances = async () => {
+    if (wallets.length > 0 && selectedAccount < wallets.length) {
+      const bal = await getSolBalanaceInUSD(wallets[selectedAccount].publicKey);
+      setBal(bal);
     }
 
-    fetchBal();
-  }, [selectedAccount, wallets]);
-
-  useEffect(() => {
-    async function fetchWalletBalance() {
-      if (publicKey) {
-        const balance = await connection.getBalance(publicKey);
-        setExternalWalletBalance(balance / web3.LAMPORTS_PER_SOL);
-      }
-      if (
-        wallets.length > 0 &&
-        selectedAccount < wallets.length &&
-        wallets[selectedAccount].publicKey
-      ) {
-        const balance = await connection.getBalance(
-          new web3.PublicKey(wallets[selectedAccount].publicKey)
-        );
-        setWalletBalance(balance / web3.LAMPORTS_PER_SOL);
-      }
+    if (publicKey) {
+      const balance = await connection.getBalance(publicKey);
+      setExternalWalletBalance(balance / web3.LAMPORTS_PER_SOL);
     }
 
-    fetchWalletBalance();
-  }, [publicKey, connection, wallets, selectedAccount]);
+    if (
+      wallets.length > 0 &&
+      selectedAccount < wallets.length &&
+      wallets[selectedAccount].publicKey
+    ) {
+      const balance = await connection.getBalance(
+        new web3.PublicKey(wallets[selectedAccount].publicKey)
+      );
+      setWalletBalance(balance / web3.LAMPORTS_PER_SOL);
+    }
+  };
+
+  useEffect(() => {
+    fetchBalances();
+  }, [selectedAccount, wallets, publicKey, connection, fetchBalances]);
 
   const handleTransaction = async (
     transactionType: "add" | "withdraw" | "send",
@@ -222,14 +212,6 @@ const Wallet = () => {
       return;
     }
 
-    const setTransactionState = {
-      add: setIsAdding,
-      withdraw: setIsWithdrawing,
-      send: setIsSending,
-    }[transactionType];
-
-    setTransactionState(true);
-
     try {
       let signature;
       switch (transactionType) {
@@ -259,10 +241,8 @@ const Wallet = () => {
 
       setTxSig(signature);
 
-      const newBalance = await getSolBalanaceInUSD(
-        wallets[selectedAccount].publicKey
-      );
-      setBal(newBalance);
+      // Fetch updated balances after transaction
+      await fetchBalances();
 
       toast({
         title: "Success",
@@ -303,8 +283,6 @@ const Wallet = () => {
           variant: "destructive",
         });
       }
-    } finally {
-      setTransactionState(false);
     }
   };
 
@@ -328,6 +306,7 @@ const Wallet = () => {
           wallets={wallets}
           selectedAccount={selectedAccount}
           bal={bal}
+          walletBalance={walletBalance}
           onAccountChange={handleAccountChange}
           onSend={handleSend}
           onAddFunds={handleAddOrWithdraw}

@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Send, Upload } from "lucide-react";
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
-const WalletCard = ({
+interface Wallet {
+  publicKey: string;
+  privateKey: string;
+  mnemonic: string;
+  derivationPath: string;
+}
+
+interface WalletCardProps {
+  wallets: Wallet[];
+  selectedAccount: number;
+  bal: number;
+  onAccountChange: (value: string) => void;
+  onSend: (toAddress: string, amount: number) => void;
+  onAddFunds: (isAdding: boolean, amount: number) => void;
+  onWithdraw: (isWithdrawing: boolean, amount: number) => void;
+  walletBalance: number;
+  onCreateNewAccount: () => void;
+  children: ReactNode;
+}
+
+const WalletCard: React.FC<WalletCardProps> = ({
   wallets,
   selectedAccount,
   bal,
@@ -27,14 +47,16 @@ const WalletCard = ({
   onSend,
   onAddFunds,
   onWithdraw,
+  walletBalance,
   onCreateNewAccount,
   children,
-}: any) => {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
-  const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [toAddress, setToAddress] = useState("");
+}) => {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] =
+    useState<boolean>(false);
+  const [isSendDialogOpen, setIsSendDialogOpen] = useState<boolean>(false);
+  const [amount, setAmount] = useState<string>("");
+  const [toAddress, setToAddress] = useState<string>("");
 
   const handleAddFunds = () => {
     onAddFunds(true, parseFloat(amount));
@@ -60,7 +82,7 @@ const WalletCard = ({
       <CardHeader>
         <CardTitle>Wallet</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col space-y-4">
+      <CardContent className="flex flex-col space-y-6">
         <Select
           onValueChange={onAccountChange}
           value={selectedAccount.toString()}
@@ -69,14 +91,16 @@ const WalletCard = ({
             <SelectValue placeholder="Select account" />
           </SelectTrigger>
           <SelectContent>
-            {wallets.map((_: any, index: any) => (
+            {wallets.map((_, index) => (
               <SelectItem key={index} value={index.toString()}>
                 Account {index + 1}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <div className="text-lg font-semibold">Balance: ${bal.toFixed(2)}</div>
+        <div className="text-2xl  font-semibold">
+          Balance: ${bal.toFixed(2)} ({walletBalance.toFixed(3)} SOL)
+        </div>
         <div className="flex justify-between mt-4">
           <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
             <DialogTrigger asChild>
