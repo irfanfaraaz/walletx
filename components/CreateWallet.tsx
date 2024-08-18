@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -44,6 +45,10 @@ const CreateWallet = ({ onCreateWallet, onImportWallet }: any) => {
               <DialogHeader>
                 <DialogTitle>Import Wallet</DialogTitle>
               </DialogHeader>
+              <DialogDescription>
+                Enter your seed phrase by typing each word or pasting the entire
+                string.
+              </DialogDescription>
               <div className="grid grid-cols-3 gap-4">
                 {Array.from({ length: 12 }).map((_, index) => (
                   <div key={index} className="flex flex-col">
@@ -56,9 +61,20 @@ const CreateWallet = ({ onCreateWallet, onImportWallet }: any) => {
                     <Input
                       id={`word-${index + 1}`}
                       value={mnemonicWords[index]}
-                      onChange={(e) =>
-                        handleMnemonicInputChange(index, e.target.value)
-                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.includes(" ")) {
+                          const words = value.split(" ");
+                          if (words.length === 12) {
+                            const newMnemonicWords = words.map((word) =>
+                              word.trim()
+                            );
+                            setMnemonicWords(newMnemonicWords);
+                          }
+                        } else {
+                          handleMnemonicInputChange(index, value);
+                        }
+                      }}
                       className="mt-1"
                     />
                   </div>
