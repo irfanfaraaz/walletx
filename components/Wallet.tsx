@@ -6,13 +6,14 @@ import {
   getSolBalanaceInUSD,
   withdrawFunds,
   sendFunds,
+  fetchTokens,
 } from "@/lib/utils";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import * as web3 from "@solana/web3.js";
 import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from "bip39";
 import bs58 from "bs58";
 import { derivePath } from "ed25519-hd-key";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as nacl from "tweetnacl";
 import CreateWallet from "./CreateWallet";
 import WalletCard from "./WalletCard";
@@ -38,6 +39,8 @@ const Wallet = () => {
   const [walletBalance, setWalletBalance] = useState(0.0);
   const [externalWalletBalance, setExternalWalletBalance] = useState(0.0);
   const [txSig, setTxSig] = useState("");
+  const [tokens, setTokens] = useState<any[]>([]);
+  const [lastAccount, setLastAccount] = useState<string | null>(null);
 
   useEffect(() => {
     const savedWallets = localStorage.getItem("wallets");
@@ -147,7 +150,7 @@ const Wallet = () => {
     setSelectedAccount(parseInt(value));
   };
 
-  const fetchBalances = async () => {
+  const fetchBalances = useCallback(async () => {
     if (wallets.length > 0 && selectedAccount < wallets.length) {
       const bal = await getSolBalanaceInUSD(wallets[selectedAccount].publicKey);
       setBal(bal);
@@ -168,7 +171,15 @@ const Wallet = () => {
       );
       setWalletBalance(balance / web3.LAMPORTS_PER_SOL);
     }
-  };
+
+    if (wallets.length > 0 && selectedAccount < wallets.length) {
+      if (lastAccount !== wallets[selectedAccount].publicKey) {
+        const tokens = await fetchTokens(wallets[selectedAccount].publicKey);
+        setTokens(tokens);
+        setLastAccount(wallets[selectedAccount].publicKey);
+      }
+    }
+  }, [selectedAccount, wallets, publicKey, connection, lastAccount]);
 
   useEffect(() => {
     fetchBalances();
@@ -307,6 +318,7 @@ const Wallet = () => {
           selectedAccount={selectedAccount}
           bal={bal}
           walletBalance={walletBalance}
+          tokens={tokens}
           onAccountChange={handleAccountChange}
           onSend={handleSend}
           onAddFunds={handleAddOrWithdraw}

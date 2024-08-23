@@ -28,6 +28,7 @@ interface Wallet {
 
 interface WalletCardProps {
   wallets: Wallet[];
+  tokens: any[];
   selectedAccount: number;
   bal: number;
   onAccountChange: (value: string) => void;
@@ -42,6 +43,7 @@ interface WalletCardProps {
 const WalletCard: React.FC<WalletCardProps> = ({
   wallets,
   selectedAccount,
+  tokens,
   bal,
   onAccountChange,
   onSend,
@@ -55,6 +57,7 @@ const WalletCard: React.FC<WalletCardProps> = ({
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] =
     useState<boolean>(false);
   const [isSendDialogOpen, setIsSendDialogOpen] = useState<boolean>(false);
+  const [isTokenDialogOpen, setIsTokenDialogOpen] = useState<boolean>(false);
   const [amount, setAmount] = useState<string>("");
   const [toAddress, setToAddress] = useState<string>("");
 
@@ -98,8 +101,34 @@ const WalletCard: React.FC<WalletCardProps> = ({
             ))}
           </SelectContent>
         </Select>
-        <div className="text-2xl  font-semibold">
+        <div className="text-2xl font-semibold">
           Balance: ${bal.toFixed(2)} ({walletBalance.toFixed(3)} SOL)
+        </div>
+        <div className="flex flex-col space-y-4">
+          <h2 className="text-lg font-semibold">Your Tokens</h2>
+          {tokens.length > 0 ? (
+            tokens.map((token) => (
+              <div
+                key={token.mint}
+                className="flex justify-between items-center"
+              >
+                <span>
+                  {token.name
+                    ? `${token.name} (${token.symbol})`
+                    : "Unknown token"}
+                </span>
+                <span>
+                  {token.symbol
+                    ? `${token.amount} ${token.symbol}`
+                    : `${token.amount} ${token.mint
+                        .toString()
+                        .slice(0, 3)}...${token.mint.toString().slice(-2)}`}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div>No non-native tokens found</div>
+          )}
         </div>
         <div className="flex justify-between mt-4">
           <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
