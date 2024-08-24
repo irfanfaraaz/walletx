@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Send, Upload } from "lucide-react";
+import { CoinsIcon, PlusCircle, Send, Upload } from "lucide-react";
 import { useState, ReactNode } from "react";
 import {
   Dialog,
@@ -37,6 +37,7 @@ interface WalletCardProps {
   onWithdraw: (isWithdrawing: boolean, amount: number) => void;
   walletBalance: number;
   onCreateNewAccount: () => void;
+  onCreateToken: (decimals: number, mintAmount: number) => void;
   children: ReactNode;
 }
 
@@ -51,6 +52,7 @@ const WalletCard: React.FC<WalletCardProps> = ({
   onWithdraw,
   walletBalance,
   onCreateNewAccount,
+  onCreateToken,
   children,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
@@ -60,6 +62,8 @@ const WalletCard: React.FC<WalletCardProps> = ({
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState<boolean>(false);
   const [amount, setAmount] = useState<string>("");
   const [toAddress, setToAddress] = useState<string>("");
+  const [decimals, setDecimals] = useState<string>("");
+  const [mintAmount, setMintAmount] = useState<string>("");
 
   const handleAddFunds = () => {
     onAddFunds(true, parseFloat(amount));
@@ -78,6 +82,13 @@ const WalletCard: React.FC<WalletCardProps> = ({
     setIsSendDialogOpen(false);
     setAmount("");
     setToAddress("");
+  };
+
+  const handleCreateToken = () => {
+    onCreateToken(parseInt(decimals), parseInt(mintAmount));
+    setIsTokenDialogOpen(false);
+    setDecimals("");
+    setMintAmount("");
   };
 
   return (
@@ -205,6 +216,35 @@ const WalletCard: React.FC<WalletCardProps> = ({
                 onChange={(e) => setAmount(e.target.value)}
               />
               <Button onClick={handleWithdraw}>Withdraw</Button>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isTokenDialogOpen} onOpenChange={setIsTokenDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant={"outline"}
+                className="bg-background w-12 sm:w-36 px-4 py-2 rounded-md"
+              >
+                <span className="hidden sm:inline">Create Token</span>
+                <CoinsIcon className="sm:ml-2" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create and Mint Token</DialogTitle>
+              </DialogHeader>
+              <Input
+                type="number"
+                placeholder="Decimals"
+                value={decimals}
+                onChange={(e) => setDecimals(e.target.value)}
+              />
+              <Input
+                type="number"
+                placeholder="Mint Amount"
+                value={mintAmount}
+                onChange={(e) => setMintAmount(e.target.value)}
+              />
+              <Button onClick={handleCreateToken}>Create</Button>
             </DialogContent>
           </Dialog>
         </div>

@@ -11,8 +11,10 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import {
+  createMint,
   createTransferInstruction,
   getOrCreateAssociatedTokenAccount,
+  mintTo,
   transfer,
 } from "@solana/spl-token";
 export function cn(...inputs: ClassValue[]) {
@@ -120,7 +122,11 @@ export async function sendFunds(
       connection,
       fromKeypair,
       mintPublicKey,
-      fromKeypair.publicKey
+      fromKeypair.publicKey,
+      undefined,
+      undefined,
+      undefined,
+      new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
     );
 
     const toTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -202,4 +208,54 @@ export async function fetchTokens(publicKey: string) {
   );
 
   return tokens;
+}
+
+export async function createToken(
+  connection: Connection,
+  fromPrivateKey: string,
+  mintAuthority: PublicKey,
+  freezeAuthority: PublicKey | null,
+  decimals: number = 9,
+  mintAmount: number = 100000000000
+): Promise<PublicKey> {
+  // Create a new mint
+  const fromKeypair = Keypair.fromSecretKey(
+    Uint8Array.from(fromPrivateKey.split(",").map(Number))
+  );
+  const mint = await createMint(
+    connection,
+    fromKeypair,
+    mintAuthority,
+    freezeAuthority,
+    decimals,
+    undefined,
+    undefined,
+    new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+  );
+
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    fromKeypair,
+    mint,
+    fromKeypair.publicKey,
+    undefined,
+    undefined,
+    undefined,
+    new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+  );
+
+  await mintTo(
+    connection,
+    fromKeypair,
+    mint,
+    tokenAccount.address,
+    mintAuthority,
+    mintAmount * 10 ** decimals,
+    undefined,
+    undefined,
+    new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+  );
+
+  console.log("Token Created:", mint.toBase58());
+  return mint;
 }

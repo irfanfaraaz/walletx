@@ -7,6 +7,7 @@ import {
   withdrawFunds,
   sendFunds,
   fetchTokens,
+  createToken,
 } from "@/lib/utils";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import * as web3 from "@solana/web3.js";
@@ -305,6 +306,39 @@ const Wallet = () => {
     handleTransaction("send", amountInSol, toPublicKey);
   };
 
+  const handleCreateToken = async (decimals: number, mintAmount: number) => {
+    if (!publicKey) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet first!",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const mint = await createToken(
+        connection,
+        bs58.decode(wallets[selectedAccount].privateKey).toString(),
+        new web3.PublicKey(wallets[selectedAccount].publicKey),
+        null,
+        decimals,
+        mintAmount
+      );
+      toast({
+        title: "Success",
+        description: `Token created successfully! Mint address: ${mint.toBase58()}`,
+      });
+    } catch (error) {
+      console.error("Token creation failed:", error);
+      toast({
+        title: "Error",
+        description: `Token creation failed! Reason: ${(error as any).message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="w-full flex items-center justify-center">
       {wallets.length === 0 ? (
@@ -324,6 +358,7 @@ const Wallet = () => {
           onAddFunds={handleAddOrWithdraw}
           onWithdraw={handleAddOrWithdraw}
           onCreateNewAccount={handleCreateNewAccount}
+          onCreateToken={handleCreateToken}
         >
           <WalletDetails
             wallets={wallets}
