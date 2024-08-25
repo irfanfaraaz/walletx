@@ -307,15 +307,6 @@ const Wallet = () => {
   };
 
   const handleCreateToken = async (decimals: number, mintAmount: number) => {
-    if (!publicKey) {
-      toast({
-        title: "Error",
-        description: "Please connect your wallet first!",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       const mint = await createToken(
         connection,
@@ -329,6 +320,18 @@ const Wallet = () => {
         title: "Success",
         description: `Token created successfully! Mint address: ${mint.toBase58()}`,
       });
+      const updatedTokens = await fetchTokens(
+        wallets[selectedAccount].publicKey
+      );
+      setTokens(updatedTokens);
+      const updatedBalance = await getSolBalanaceInUSD(
+        wallets[selectedAccount].publicKey
+      );
+      setBal(updatedBalance);
+      const updatedBalanceSol = await connection.getBalance(
+        new web3.PublicKey(wallets[selectedAccount].publicKey)
+      );
+      setWalletBalance(updatedBalanceSol / web3.LAMPORTS_PER_SOL);
     } catch (error) {
       console.error("Token creation failed:", error);
       toast({

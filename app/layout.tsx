@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/Theme/thrme-provider";
 import AppWalletProvider from "@/components/AppWalletProvider";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,7 +41,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <AppWalletProvider>
               <div className="relative flex h-screen flex-col">
                 <SiteHeader />
-                <div className="">{children}</div>
+                <div className="">
+                  {children}
+                  <Analytics />
+                </div>
               </div>
               <Toaster />
             </AppWalletProvider>

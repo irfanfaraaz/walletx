@@ -94,7 +94,12 @@ const WalletCard: React.FC<WalletCardProps> = ({
   return (
     <Card className="w-2/3">
       <CardHeader>
-        <CardTitle>Wallet</CardTitle>
+        <CardTitle>
+          <div className="flex justify-between">
+            Wallet
+            <WalletMultiButton />
+          </div>
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col space-y-6">
         <Select
@@ -180,7 +185,7 @@ const WalletCard: React.FC<WalletCardProps> = ({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <WalletMultiButton />
+                {/* <WalletMultiButton /> */}
                 <DialogTitle>Add Funds</DialogTitle>
               </DialogHeader>
               <Input
