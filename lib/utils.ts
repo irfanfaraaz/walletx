@@ -1,5 +1,11 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  createMint,
+  createTransferInstruction,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  TOKEN_2022_PROGRAM_ID,
+} from "@solana/spl-token";
 import {
   clusterApiUrl,
   Connection,
@@ -10,13 +16,8 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
-import {
-  createMint,
-  createTransferInstruction,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  transfer,
-} from "@solana/spl-token";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -126,7 +127,7 @@ export async function sendFunds(
       undefined,
       undefined,
       undefined,
-      new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+      TOKEN_2022_PROGRAM_ID
     );
 
     const toTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -142,7 +143,7 @@ export async function sendFunds(
       fromKeypair.publicKey,
       amount,
       [],
-      new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+      TOKEN_2022_PROGRAM_ID
     );
 
     transaction.add(transferInstruction);
@@ -175,7 +176,7 @@ export async function sendFunds(
 export async function fetchTokens(publicKey: string) {
   const wallet = new PublicKey(publicKey);
   const tokenAccounts = await connection.getParsedTokenAccountsByOwner(wallet, {
-    programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
+    programId: TOKEN_2022_PROGRAM_ID,
   });
   const tokens = await Promise.all(
     tokenAccounts.value.map(async (accountInfo) => {
@@ -230,7 +231,7 @@ export async function createToken(
     decimals,
     undefined,
     undefined,
-    new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+    TOKEN_2022_PROGRAM_ID
   );
 
   const tokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -241,7 +242,7 @@ export async function createToken(
     undefined,
     undefined,
     undefined,
-    new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+    TOKEN_2022_PROGRAM_ID
   );
 
   await mintTo(
@@ -253,7 +254,7 @@ export async function createToken(
     mintAmount * 10 ** decimals,
     undefined,
     undefined,
-    new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+    TOKEN_2022_PROGRAM_ID
   );
 
   console.log("Token Created:", mint.toBase58());
