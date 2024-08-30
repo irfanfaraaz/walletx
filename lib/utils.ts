@@ -1,11 +1,24 @@
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
+  createInitializeMetadataPointerInstruction,
+  createInitializeMintInstruction,
   createMint,
   createTransferInstruction,
+  ExtensionType,
+  getMintLen,
   getOrCreateAssociatedTokenAccount,
+  LENGTH_SIZE,
   mintTo,
   TOKEN_2022_PROGRAM_ID,
+  transfer,
+  TYPE_SIZE,
 } from "@solana/spl-token";
+import {
+  createInitializeInstruction,
+  createUpdateFieldInstruction,
+  createRemoveKeyInstruction,
+  pack,
+  TokenMetadata,
+} from "@solana/spl-token-metadata";
 import {
   clusterApiUrl,
   Connection,
@@ -134,7 +147,11 @@ export async function sendFunds(
       connection,
       fromKeypair,
       mintPublicKey,
-      toPublicKeyObj
+      toPublicKeyObj,
+      undefined,
+      undefined,
+      undefined,
+      TOKEN_2022_PROGRAM_ID
     );
 
     const transferInstruction = createTransferInstruction(
@@ -217,23 +234,98 @@ export async function createToken(
   mintAuthority: PublicKey,
   freezeAuthority: PublicKey | null,
   decimals: number = 9,
-  mintAmount: number = 100000000000
-): Promise<PublicKey> {
-  // Create a new mint
+  mintAmount: number = 100000000000,
+  name: string = "OPOS",
+  symbol: string = "OPOS",
+  uri: string = "https://raw.githubusercontent.com/solana-developers/opos-asset/main/assets/DeveloperPortal/metadata.json",
+  description: string = "Only Possible On Solana"
+) {
   const fromKeypair = Keypair.fromSecretKey(
     Uint8Array.from(fromPrivateKey.split(",").map(Number))
   );
-  const mint = await createMint(
-    connection,
-    fromKeypair,
-    mintAuthority,
-    freezeAuthority,
+  const mintKeypair = Keypair.generate();
+  const mint = mintKeypair.publicKey;
+
+  const metaData: TokenMetadata = {
+    updateAuthority: mintAuthority,
+    mint: mint,
+    name: name,
+    symbol: symbol,
+    uri: uri,
+    additionalMetadata: [["description", description]],
+  };
+
+  const metadataExtension = TYPE_SIZE + LENGTH_SIZE;
+  const metadataLen = pack(metaData).length;
+
+  const mintLen = getMintLen([ExtensionType.MetadataPointer]);
+
+  const lamports = await connection.getMinimumBalanceForRentExemption(
+    mintLen + metadataExtension + metadataLen
+  );
+
+  const createAccountInstruction = SystemProgram.createAccount({
+    fromPubkey: mintAuthority,
+    newAccountPubkey: mint,
+    space: mintLen,
+    lamports,
+    programId: TOKEN_2022_PROGRAM_ID,
+  });
+
+  const initializeMetadataPointerInstruction =
+    createInitializeMetadataPointerInstruction(
+      mint,
+      mintAuthority,
+      mint,
+      TOKEN_2022_PROGRAM_ID
+    );
+
+  const initializeMintInstruction = createInitializeMintInstruction(
+    mint,
     decimals,
-    undefined,
-    undefined,
+    mintAuthority,
+    null,
     TOKEN_2022_PROGRAM_ID
   );
 
+  const initializeMetadataInstruction = createInitializeInstruction({
+    programId: TOKEN_2022_PROGRAM_ID,
+    metadata: mint,
+    updateAuthority: mintAuthority,
+    mint: mint,
+    mintAuthority: mintAuthority,
+    name: metaData.name,
+    symbol: metaData.symbol,
+    uri: metaData.uri,
+  });
+
+  const updateFieldInstruction = createUpdateFieldInstruction({
+    programId: TOKEN_2022_PROGRAM_ID,
+    metadata: mint,
+    updateAuthority: mintAuthority,
+    field: metaData.additionalMetadata[0][0], // key
+    value: metaData.additionalMetadata[0][1], // value
+  });
+  let transaction: Transaction;
+  let transactionSignature: string;
+
+  transaction = new Transaction().add(
+    createAccountInstruction,
+    initializeMetadataPointerInstruction,
+    initializeMintInstruction,
+    initializeMetadataInstruction,
+    updateFieldInstruction
+  );
+
+  transactionSignature = await sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [fromKeypair, mintKeypair]
+  );
+  console.log(
+    "\nCreate Mint Account:",
+    `https://solana.fm/tx/${transactionSignature}?cluster=devnet-solana`
+  );
   const tokenAccount = await getOrCreateAssociatedTokenAccount(
     connection,
     fromKeypair,
@@ -258,5 +350,5 @@ export async function createToken(
   );
 
   console.log("Token Created:", mint.toBase58());
-  return mint;
+  return transactionSignature;
 }

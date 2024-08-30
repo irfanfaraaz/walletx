@@ -246,14 +246,14 @@ const Wallet = () => {
           signature = await sendFunds(
             bs58.decode(wallets[selectedAccount].privateKey).toString(),
             toPublicKey!,
-            amountInSol
+            amountInSol,
+            "5Xgs7kykHJCcZgCJmYaxi2Enbf5nvhL6RwezduFSbP48"
           );
           break;
       }
 
       setTxSig(signature);
 
-      // Fetch updated balances after transaction
       await fetchBalances();
 
       toast({
@@ -285,7 +285,7 @@ const Wallet = () => {
         console.error("SendTransactionError:", (error as any).error);
         toast({
           title: "Error",
-          description: (error as any).error.message,
+          description: (error as any).error?.message,
           variant: "destructive",
         });
       } else {
@@ -306,19 +306,43 @@ const Wallet = () => {
     handleTransaction("send", amountInSol, toPublicKey);
   };
 
-  const handleCreateToken = async (decimals: number, mintAmount: number) => {
+  const handleCreateToken = async (
+    decimals: number,
+    name: string,
+    symbol: string,
+    uri: string,
+    description: string,
+    mintAmount: number
+  ) => {
     try {
-      const mint = await createToken(
+      const transactionSignature = await createToken(
         connection,
         bs58.decode(wallets[selectedAccount].privateKey).toString(),
         new web3.PublicKey(wallets[selectedAccount].publicKey),
         null,
         decimals,
-        mintAmount
+        mintAmount,
+        name,
+        symbol,
+        uri,
+        description
       );
       toast({
         title: "Success",
-        description: `Token created successfully! Mint address: ${mint.toBase58()}`,
+        description: `Token created successfully!`,
+        action: (
+          <ToastAction
+            altText="View Transaction"
+            onClick={() =>
+              window.open(
+                `https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`,
+                "_blank"
+              )
+            }
+          >
+            View Transaction
+          </ToastAction>
+        ),
       });
       const updatedTokens = await fetchTokens(
         wallets[selectedAccount].publicKey

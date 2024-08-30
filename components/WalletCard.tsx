@@ -37,7 +37,14 @@ interface WalletCardProps {
   onWithdraw: (isWithdrawing: boolean, amount: number) => void;
   walletBalance: number;
   onCreateNewAccount: () => void;
-  onCreateToken: (decimals: number, mintAmount: number) => void;
+  onCreateToken: (
+    decimals: number,
+    name: string,
+    symbol: string,
+    uri: string,
+    description: string,
+    mintAmount: number
+  ) => void;
   children: ReactNode;
 }
 
@@ -64,6 +71,10 @@ const WalletCard: React.FC<WalletCardProps> = ({
   const [toAddress, setToAddress] = useState<string>("");
   const [decimals, setDecimals] = useState<string>("");
   const [mintAmount, setMintAmount] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [symbol, setSymbol] = useState<string>("");
+  const [uri, setUri] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
 
   const handleAddFunds = () => {
     onAddFunds(true, parseFloat(amount));
@@ -85,10 +96,21 @@ const WalletCard: React.FC<WalletCardProps> = ({
   };
 
   const handleCreateToken = () => {
-    onCreateToken(parseInt(decimals), parseInt(mintAmount));
+    onCreateToken(
+      parseInt(decimals),
+      name,
+      symbol,
+      uri,
+      description,
+      parseInt(mintAmount)
+    );
     setIsTokenDialogOpen(false);
     setDecimals("");
     setMintAmount("");
+    setName("");
+    setSymbol("");
+    setUri("");
+    setDescription("");
   };
 
   return (
@@ -185,7 +207,6 @@ const WalletCard: React.FC<WalletCardProps> = ({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                {/* <WalletMultiButton /> */}
                 <DialogTitle>Add Funds</DialogTitle>
               </DialogHeader>
               <Input
@@ -248,6 +269,30 @@ const WalletCard: React.FC<WalletCardProps> = ({
                 placeholder="Mint Amount"
                 value={mintAmount}
                 onChange={(e) => setMintAmount(e.target.value)}
+              />
+              <Input
+                type="text"
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Input
+                type="text"
+                placeholder="Symbol"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value)}
+              />
+              <Input
+                type="text"
+                placeholder="URI"
+                value={uri}
+                onChange={(e) => setUri(e.target.value)}
+              />
+              <Input
+                type="text"
+                placeholder="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
               <Button onClick={handleCreateToken}>Create</Button>
             </DialogContent>
