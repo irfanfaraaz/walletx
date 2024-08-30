@@ -246,8 +246,7 @@ const Wallet = () => {
           signature = await sendFunds(
             bs58.decode(wallets[selectedAccount].privateKey).toString(),
             toPublicKey!,
-            amountInSol,
-            "5Xgs7kykHJCcZgCJmYaxi2Enbf5nvhL6RwezduFSbP48"
+            amountInSol
           );
           break;
       }
