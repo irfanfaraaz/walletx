@@ -8,6 +8,7 @@ import {
   sendFunds,
   fetchTokens,
   createToken,
+  swapSolToUsdc,
 } from "@/lib/utils";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import * as web3 from "@solana/web3.js";
@@ -365,6 +366,39 @@ const Wallet = () => {
     }
   };
 
+  const handleSwap = async (amountInSol: number) => {
+    try {
+      const transactionSignature = await swapSolToUsdc(
+        bs58.decode(wallets[selectedAccount].privateKey).toString(),
+        amountInSol
+      );
+      toast({
+        title: "Success",
+        description: `Swap completed successfully!`,
+        action: (
+          <ToastAction
+            altText="View Transaction"
+            onClick={() =>
+              window.open(
+                `https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`,
+                "_blank"
+              )
+            }
+          >
+            View Transaction
+          </ToastAction>
+        ),
+      });
+      await fetchBalances();
+    } catch (error) {
+      console.error("Swap failed:", error);
+      toast({
+        title: "Error",
+        description: `Swap failed! Reason: ${(error as any).message}`,
+        variant: "destructive",
+      });
+    }
+  };
   return (
     <div className="w-full flex items-center justify-center">
       {wallets.length === 0 ? (
@@ -385,6 +419,7 @@ const Wallet = () => {
           onWithdraw={handleAddOrWithdraw}
           onCreateNewAccount={handleCreateNewAccount}
           onCreateToken={handleCreateToken}
+          onSwap={handleSwap}
         >
           <WalletDetails
             wallets={wallets}

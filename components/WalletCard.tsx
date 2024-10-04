@@ -7,8 +7,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { CoinsIcon, PlusCircle, Send, Upload } from "lucide-react";
-import { useState, ReactNode } from "react";
+import { CoinsIcon, PlusCircle, RefreshCw, Send, Upload } from "lucide-react";
+import { useState, ReactNode, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { getUSDConversionRate } from "@/lib/utils";
 
 interface Wallet {
   publicKey: string;
@@ -45,6 +46,7 @@ interface WalletCardProps {
     description: string,
     mintAmount: number
   ) => void;
+  onSwap: (amount: number) => void;
   children: ReactNode;
 }
 
@@ -60,6 +62,7 @@ const WalletCard: React.FC<WalletCardProps> = ({
   walletBalance,
   onCreateNewAccount,
   onCreateToken,
+  onSwap,
   children,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
@@ -75,6 +78,23 @@ const WalletCard: React.FC<WalletCardProps> = ({
   const [symbol, setSymbol] = useState<string>("");
   const [uri, setUri] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+  const [isSwapDialogOpen, setIsSwapDialogOpen] = useState<boolean>(false);
+  const [swapAmount, setSwapAmount] = useState<string>("");
+  const [usdcBalance, setUsdcBalance] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchUSDConversionRate = async () => {
+      const rate = await getUSDConversionRate(parseFloat(swapAmount));
+      setUsdcBalance(rate);
+    };
+    fetchUSDConversionRate();
+  }, [swapAmount]);
+
+  const handleSwap = () => {
+    onSwap(parseFloat(swapAmount));
+    setIsSwapDialogOpen(false);
+    setSwapAmount("");
+  };
 
   const handleAddFunds = () => {
     onAddFunds(true, parseFloat(amount));
@@ -295,6 +315,36 @@ const WalletCard: React.FC<WalletCardProps> = ({
                 onChange={(e) => setDescription(e.target.value)}
               />
               <Button onClick={handleCreateToken}>Create</Button>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isSwapDialogOpen} onOpenChange={setIsSwapDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant={"outline"}
+                className="bg-background w-12 sm:w-36 px-4 py-2 rounded-md"
+              >
+                <span className="hidden sm:inline">Swap</span>
+                <RefreshCw className="sm:ml-2" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Swap SOL to USDC</DialogTitle>
+              </DialogHeader>
+              <Input
+                type="number"
+                placeholder="Amount of SOL"
+                value={swapAmount}
+                onChange={(e) => setSwapAmount(e.target.value)}
+              />
+              {parseFloat(swapAmount) >
+                parseFloat(walletBalance.toFixed(3)) && (
+                <p className="text-red-500">Error: Insufficient balance</p>
+              )}
+              <div>
+                <p>You will receive: {usdcBalance} USDC</p>
+              </div>
+              <Button onClick={handleSwap}>Swap SOL to USDC</Button>
             </DialogContent>
           </Dialog>
         </div>

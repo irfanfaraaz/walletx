@@ -25,7 +25,7 @@ const CreateWallet = ({ onCreateWallet, onImportWallet }: any) => {
   };
 
   return (
-    <Card className="w-96">
+    <Card className="w-96 ">
       <CardHeader>
         <CardTitle>Wallet Actions</CardTitle>
       </CardHeader>

@@ -28,6 +28,7 @@ import {
   sendAndConfirmTransaction,
   SystemProgram,
   Transaction,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -37,6 +38,19 @@ export function cn(...inputs: ClassValue[]) {
 
 export const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
+export async function getUSDConversionRate(amount: number): Promise<number> {
+  const response = await fetch("https://price.jup.ag/v6/price?ids=SOL", {
+    method: "GET",
+  });
+
+  const data = await response.json();
+
+  const currentPrice = data.data?.SOL?.price ?? 0;
+
+  const usdAmount = amount * currentPrice;
+
+  return usdAmount;
+}
 export async function getSolBalanaceInUSD(publicKey: string): Promise<number> {
   let wallet = new PublicKey(publicKey);
   const userSol = (await connection.getBalance(wallet)) / LAMPORTS_PER_SOL;
@@ -351,4 +365,55 @@ export async function createToken(
 
   console.log("Token Created:", mint.toBase58());
   return transactionSignature;
+}
+
+export async function swapSolToUsdc(
+  fromPrivateKey: string,
+  amount: number
+): Promise<string> {
+  const fromKeypair = Keypair.fromSecretKey(
+    Uint8Array.from(fromPrivateKey.split(",").map(Number))
+  );
+
+  const quoteResponse = await fetch(
+    `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${
+      amount * LAMPORTS_PER_SOL
+    }&slippageBps=50`
+  );
+  const quoteData = await quoteResponse.json();
+
+  const { swapTransaction } = await (
+    await fetch("https://quote-api.jup.ag/v6/swap", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        quoteResponse: quoteData,
+        userPublicKey: fromKeypair.publicKey.toBase58(),
+        wrapUnwrapSOL: true,
+      }),
+    })
+  ).json();
+
+  const swapTransactionBuf = new Uint8Array(
+    Buffer.from(swapTransaction, "base64")
+  );
+  const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+
+  transaction.sign([fromKeypair]);
+  const latestBlockHash = await connection.getLatestBlockhash();
+
+  // Execute the transaction
+  const rawTransaction = transaction.serialize();
+  const txid = await connection.sendRawTransaction(rawTransaction, {
+    skipPreflight: true,
+    maxRetries: 2,
+  });
+  await connection.confirmTransaction({
+    blockhash: latestBlockHash.blockhash,
+    lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+    signature: txid,
+  });
+  return txid;
 }
